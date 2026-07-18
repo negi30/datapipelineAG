@@ -33,5 +33,5 @@ This architecture ensures **100% mathematical accuracy**, strict **data privacy*
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/](https://github.com/)[Your-GitHub-Username]/datapipelinea1.git
+git clone https://github.com/negi30/datapipelineA1.git
 cd datapipelinea1
