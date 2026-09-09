@@ -1,0 +1,21 @@
+# Retail Sales Data Dictionary
+
+| Column Name | Business Definition | Typical Values / Format |
+|---|---|---|
+| store | Identifier/Branch name of retail location | Store #101, Store #102, etc. |
+| Product ID | Unique Stock Keeping Unit (SKU) identifier | PID-1001 to PID-1012 |
+| Product Title | Full catalog description of retail item | Brand and item name with volume/weight |
+| Brand | Manufacturer/Brand name of merchandise | PureBrew, NutriFarm, HarvestGold, AlpineDairy, VitalityFoods, GreenValley |
+| Unit | Primary packaging classification | Carton, Bottle, Bag, Tub, Pack, Jug, Jar, Tin |
+| Quantity Per Case | Master carton quantity packing size | Integer (6, 8, 10, 12, 24) |
+| State | US State of store location | California, Texas, New York, Washington, Florida, Illinois |
+| City | City where store is situated | Los Angeles, San Francisco, Austin, Dallas, Seattle, Miami, Chicago, etc. |
+| District | Regional operational grouping | District A, District B, District C, District D |
+| Units_Sold | Total number of individual retail units sold in transaction | Positive integer (5 - 150) |
+| Unit_Price | Retail sales price per unit in USD | Decimal currency ($2.50 - $25.00) |
+| Revenue | Gross proceeds = Units_Sold * Unit_Price | Decimal currency in USD |
+| Cost | Cost of Goods Sold (COGS) in USD | Decimal currency in USD |
+| Profit | Net margin = Revenue - Cost | Decimal currency in USD |
+| Customer_Rating | Verified customer product review score (1-5) | Decimal (3.8 - 5.0) |
+| In_Stock | Real-time warehouse availability status | Boolean (True / False) |
+| Date | Date when transaction occurred | ISO date string (YYYY-MM-DD) |

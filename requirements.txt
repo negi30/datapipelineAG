@@ -1,0 +1,8 @@
+fastapi>=0.104.1
+uvicorn>=0.24.0
+pandas>=2.1.0
+numpy>=1.25.0
+pydantic>=2.4.0
+python-multipart>=0.0.6
+rich>=13.6.0
+pyarrow>=14.0.0

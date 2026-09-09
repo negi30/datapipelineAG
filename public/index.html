@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataChat AI - 10MB Dataset Agent</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Plotly.js for dynamic visualizations -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <!-- Heroicons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <i class="fa-solid fa-brain text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-lg text-white tracking-tight">DataChat AI Agent</h1>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">10MB Serverless Ready</span>
+        </div>
+        <p class="text-xs text-slate-400">Natural Language Data Analysis & Safe Pandas Execution Engine</p>
+      </div>
+    </div>
+
+    <!-- Dataset Meta & Quick Actions -->
+    <div class="flex items-center gap-4">
+      <div id="dataset-badge" class="hidden md:flex items-center gap-3 bg-slate-800/80 px-3.5 py-1.5 rounded-lg border border-slate-700 text-xs">
+        <span class="flex items-center gap-1.5 text-slate-300 font-medium">
+          <i class="fa-regular fa-file-lines text-indigo-400"></i>
+          <span id="meta-filename">sample_retail_data.csv</span>
+        </span>
+        <span class="text-slate-600">•</span>
+        <span id="meta-rows" class="text-slate-400">0 rows</span>
+        <span class="text-slate-600">•</span>
+        <span id="meta-cols" class="text-slate-400">0 cols</span>
+        <span class="text-slate-600">•</span>
+        <span id="meta-memory" class="text-emerald-400 font-mono">0.0 MB</span>
+      </div>
+
+      <button id="btn-upload-modal" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg transition flex items-center gap-2">
+        <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i>
+        <span>Change Dataset</span>
+      </button>
+
+      <button id="btn-settings-modal" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm">
+        <i class="fa-solid fa-key"></i>
+        <span>API Key</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    
+    <!-- Navigation Tabs -->
+    <aside class="w-full md:w-64 border-r border-slate-800 bg-slate-900/40 p-4 flex md:flex-col gap-1.5 shrink-0 overflow-x-auto">
+      <button data-tab="tab-chat" class="tab-btn active flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-left">
+        <i class="fa-regular fa-comments text-indigo-400 w-4"></i>
+        <span>Chat & Analytics</span>
+      </button>
+      <button data-tab="tab-schema" class="tab-btn flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left">
+        <i class="fa-solid fa-network-wired text-cyan-400 w-4"></i>
+        <span>Schema Extractor</span>
+      </button>
+      <button data-tab="tab-summary" class="tab-btn flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left">
+        <i class="fa-solid fa-chart-pie text-emerald-400 w-4"></i>
+        <span>Statistical Summary</span>
+      </button>
+      <button data-tab="tab-dict" class="tab-btn flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left">
+        <i class="fa-solid fa-book-bookmark text-amber-400 w-4"></i>
+        <span>Data Dictionary</span>
+      </button>
+      <button data-tab="tab-preview" class="tab-btn flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition text-left">
+        <i class="fa-solid fa-table-cells text-violet-400 w-4"></i>
+        <span>Raw Data Preview</span>
+      </button>
+      
+      <div class="hidden md:block mt-auto pt-4 border-t border-slate-800/80">
+        <div class="text-[11px] text-slate-500 font-medium px-2 mb-2">Vercel Deployment</div>
+        <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-[11px] text-slate-400 space-y-1">
+          <p class="text-slate-300 font-medium">Ready for <code class="text-indigo-400 font-mono">vercel --prod</code></p>
+          <p>Serverless limits respected: <span class="text-emerald-400">10MB cap</span>, memory downcasting, safe execution.</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Tab Contents Container -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-slate-950">
+
+      <!-- TAB 1: Chat & Analytics -->
+      <section id="tab-chat" class="tab-pane flex-1 flex flex-col h-full overflow-hidden">
+        <!-- Chat History -->
+        <div id="chat-stream" class="flex-1 overflow-y-auto p-6 space-y-6">
+          <!-- Welcome Greeting Card -->
+          <div class="bg-gradient-to-r from-slate-900 to-indigo-950/40 p-5 rounded-2xl border border-slate-800 shadow-sm">
+            <div class="flex items-start gap-4">
+              <div class="h-10 w-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/30">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+              <div class="space-y-2">
+                <h2 class="font-semibold text-white text-sm">Welcome to your AI Data Copilot</h2>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                  Ask natural language questions about your dataset. The agent combines your extracted schema, business data dictionary, and summary statistics to write safe, verified Pandas code, execute it in real time, and generate interactive charts.
+                </p>
+                <!-- Quick Query Chips -->
+                <div class="pt-2">
+                  <p class="text-[11px] text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Try asking:</p>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="query-chip text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-full border border-slate-700 transition">
+                      Top 5 brands by revenue
+                    </button>
+                    <button class="query-chip text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-full border border-slate-700 transition">
+                      Total revenue and profit by state
+                    </button>
+                    <button class="query-chip text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-full border border-slate-700 transition">
+                      Monthly sales and profit trend
+                    </button>
+                    <button class="query-chip text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-full border border-slate-700 transition">
+                      Store profit margin ranking
+                    </button>
+                    <button class="query-chip text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-full border border-slate-700 transition">
+                      Top 10 highest rated products
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Dynamic Messages will be injected here -->
+        </div>
+
+        <!-- Chat Input Footer -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900/60 backdrop-blur">
+          <form id="chat-form" class="flex gap-2.5 max-w-5xl mx-auto">
+            <div class="relative flex-1">
+              <input 
+                id="chat-input"
+                type="text" 
+                placeholder="Ask an analytical question (e.g. 'Show revenue by state as a bar chart')..." 
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition shadow-inner"
+                autocomplete="off"
+                required
+              />
+            </div>
+            <button 
+              type="submit" 
+              id="chat-submit-btn"
+              class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 transition shadow-md shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>Ask Agent</span>
+              <i class="fa-solid fa-arrow-up text-xs"></i>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB 2: Schema Extractor -->
+      <section id="tab-schema" class="tab-pane hidden flex-1 p-6 overflow-y-auto space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Extracted Schema (`utils/schema_extractor.py`)</h2>
+            <p class="text-xs text-slate-400">Automated column dtypes, numeric stats, categorical samples, and ignored list.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">schema_extractor</span>
+        </div>
+
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+          <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Ignored Columns in Schema</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            The extractor prevents high-cardinality metadata from bloating LLM token context:
+          </p>
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">store</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Product ID</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Product Title</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Brand</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Unit</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Quantity Per Case</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">State</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">City</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">District</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-800/70 border-b border-slate-800 flex justify-between items-center">
+            <span class="text-xs font-mono text-slate-300">Raw Schema Output</span>
+            <button onclick="copyToClipboard('schema-raw')" class="text-xs text-slate-400 hover:text-white transition">
+              <i class="fa-regular fa-copy"></i> Copy
+            </button>
+          </div>
+          <pre id="schema-raw" class="p-4 text-xs font-mono text-cyan-300 overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-[500px]">Loading schema...</pre>
+        </div>
+      </section>
+
+      <!-- TAB 3: Statistical Summary -->
+      <section id="tab-summary" class="tab-pane hidden flex-1 p-6 overflow-y-auto space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Statistical Summary (`utils/summary_generator.py`)</h2>
+            <p class="text-xs text-slate-400">Generated using pandas <code>df.describe(include='all')</code> with rich console integration.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">summary_generator</span>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+          <div class="px-4 py-2.5 bg-slate-800/70 border-b border-slate-800 flex justify-between items-center">
+            <span class="text-xs font-mono text-slate-300">Full Dataset Statistics</span>
+            <button onclick="copyToClipboard('summary-raw')" class="text-xs text-slate-400 hover:text-white transition">
+              <i class="fa-regular fa-copy"></i> Copy
+            </button>
+          </div>
+          <pre id="summary-raw" class="p-4 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre leading-relaxed max-h-[550px]">Loading summary...</pre>
+        </div>
+      </section>
+
+      <!-- TAB 4: Data Dictionary -->
+      <section id="tab-dict" class="tab-pane hidden flex-1 p-6 overflow-y-auto space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Business Data Dictionary</h2>
+            <p class="text-xs text-slate-400">Loaded from <code>data_dictionary.txt</code> to guide LLM semantic mapping.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">data_dictionary.txt</span>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl border border-slate-800 p-5">
+          <pre id="dict-raw" class="text-xs font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">Loading dictionary...</pre>
+        </div>
+      </section>
+
+      <!-- TAB 5: Raw Data Preview -->
+      <section id="tab-preview" class="tab-pane hidden flex-1 p-6 overflow-y-auto space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-base font-semibold text-white">Raw Dataset Preview (First 10 Rows)</h2>
+            <p class="text-xs text-slate-400">Live sample of the active in-memory DataFrame <code>df</code>.</p>
+          </div>
+          <button id="btn-reset-dataset" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition">
+            <i class="fa-solid fa-rotate-left mr-1"></i> Reset to Sample
+          </button>
+        </div>
+
+        <div class="bg-slate-900 rounded-xl border border-slate-800 overflow-x-auto shadow-sm">
+          <table id="preview-table" class="w-full text-xs text-left border-collapse">
+            <thead class="bg-slate-800 text-slate-300 uppercase text-[10px] tracking-wider border-b border-slate-700">
+              <tr id="preview-thead"></tr>
+            </thead>
+            <tbody id="preview-tbody" class="divide-y divide-slate-800/80 text-slate-300 font-mono"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL 1: Upload / Switch Dataset (Up to 10MB) -->
+  <div id="upload-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-semibold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-file-arrow-up text-indigo-400"></i>
+          <span>Switch or Upload Dataset (Up to 10MB)</span>
+        </h3>
+        <button class="btn-close-modal text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-5">
+        <!-- Direct File Upload -->
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-2">Upload CSV or Parquet (Limit: 10MB)</label>
+          <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-950/50">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-500 mb-2"></i>
+            <p class="text-xs text-slate-300 font-medium">Click to choose file or drag & drop</p>
+            <p class="text-[11px] text-slate-500 mt-1">Supports .csv or .parquet (max 10MB)</p>
+            <input type="file" id="file-input" accept=".csv,.parquet" class="hidden" />
+          </div>
+          <div id="upload-status" class="hidden text-xs mt-2 text-indigo-400"></div>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-800"></div>
+          <span class="flex-shrink mx-4 text-[11px] text-slate-500 uppercase tracking-widest font-semibold">Or Load from URL</span>
+          <div class="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        <!-- Remote URL Ingestion -->
+        <div class="space-y-2">
+          <label class="block text-xs font-medium text-slate-300">Public CSV / Parquet URL (S3, GitHub, Cloudflare R2)</label>
+          <div class="flex gap-2">
+            <input 
+              type="url" 
+              id="url-input" 
+              placeholder="https://example.com/dataset.csv" 
+              class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <button id="btn-load-url" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3.5 py-2 rounded-lg border border-slate-700 font-medium transition">
+              Load
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Settings & API Key -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-semibold text-white text-sm flex items-center gap-2">
+          <i class="fa-solid fa-key text-indigo-400"></i>
+          <span>AI Model Configuration</span>
+        </h3>
+        <button class="btn-close-modal text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Google Gemini API Key</label>
+          <input 
+            type="password" 
+            id="gemini-key-input" 
+            placeholder="AIzaSy..." 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <p class="text-[11px] text-slate-400 mt-1">
+            Uses Gemini 2.0 Flash for instant code synthesis. Stored locally in your browser session.
+          </p>
+        </div>
+
+        <div class="bg-indigo-950/30 p-3 rounded-lg border border-indigo-500/20 text-[11px] text-indigo-300 space-y-1">
+          <p class="font-semibold text-indigo-200">✨ Offline Heuristic Engine Built-in</p>
+          <p>Even without an API key, standard queries (rankings, group-bys, totals, trends, filters) work seamlessly using the built-in analyzer.</p>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="btn-save-key" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+            Save Key
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
