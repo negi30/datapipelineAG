@@ -21,7 +21,7 @@ def get_ssl_context():
     except Exception:
         return ssl._create_unverified_context()
 
-from utils.code_safety import strip_code_fences, is_code_safe
+from utils.code_safety import strip_code_fences, is_code_safe, validate_python_syntax
 from api.config import GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -105,11 +105,11 @@ def query_gemini(prompt: str, api_key: str) -> str:
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1200}
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
         }
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
+        with urllib.request.urlopen(req, timeout=35, context=get_ssl_context()) as response:
             result_json = json.loads(response.read().decode("utf-8"))
             candidates = result_json.get("candidates", [])
             if candidates:
@@ -145,11 +145,14 @@ def query_gemini(prompt: str, api_key: str) -> str:
         req_list = urllib.request.Request(list_url, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req_list, timeout=10, context=get_ssl_context()) as resp:
             m_data = json.loads(resp.read().decode("utf-8"))
-            available_models = [
+            # Filter to prefer gemini models over gemma/text models
+            all_supported = [
                 m["name"].replace("models/", "")
                 for m in m_data.get("models", [])
                 if "generateContent" in m.get("supportedGenerationMethods", [])
             ]
+            gemini_only = [m for m in all_supported if "gemini" in m.lower() and not "embedding" in m.lower()]
+            available_models = gemini_only if gemini_only else all_supported
             for dyn_model in available_models:
                 if dyn_model not in models:
                     try:
@@ -184,7 +187,7 @@ def query_openai_compatible(prompt: str, api_key: str, base_url: str = "https://
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
     try:
-        with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
+        with urllib.request.urlopen(req, timeout=35, context=get_ssl_context()) as response:
             result_json = json.loads(response.read().decode("utf-8"))
             return result_json["choices"][0]["message"]["content"].strip()
     except urllib.error.HTTPError as e:
@@ -248,16 +251,19 @@ Return ONLY executable Python code:"""
     raw_code, provider = call_llm(prompt)
     clean_code = sanitize_code(strip_code_fences(raw_code))
 
-    # Self-Correction Check: If code contains matplotlib/plotting imports or violates safety
-    if not is_code_safe(clean_code) or "matplotlib" in clean_code or "plt." in clean_code or "seaborn" in clean_code:
+    # Self-Correction Check: If code has syntax error, contains matplotlib, or violates safety
+    is_valid_syntax, syntax_err = validate_python_syntax(clean_code)
+    if not is_valid_syntax or not is_code_safe(clean_code) or "matplotlib" in clean_code or "plt." in clean_code or "seaborn" in clean_code:
+        logger.warning(f"Initial code issue ({syntax_err or 'unsafe/matplotlib'}). Triggering self-correction retry...")
         logger.warning(f"Initial LLM code contained forbidden patterns: {clean_code[:100]}. Triggering self-correction retry...")
         retry_prompt = f"""{prompt}
 
 CRITICAL FIX REQUIRED:
-Your previous response contained forbidden statements (such as `import matplotlib` or `plt.`):
+Your previous response had an issue ({syntax_err or 'forbidden imports/matplotlib'}):
 ```python
 {clean_code}
 ```
+Please provide complete, syntactically valid Python code with NO unclosed quotes and NO imports. Assign the final DataFrame to `result`.
 REMEMBER:
 1. STRICTLY FORBIDDEN: DO NOT write `import matplotlib` or use `plt.`. The web dashboard automatically creates the interactive charts from your `result` dataframe!
 2. DO NOT import any modules.

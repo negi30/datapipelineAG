@@ -208,12 +208,17 @@ function appendAgentResponse(data) {
 
   // Provider label
   let providerBadge = "";
-  if (data.provider === "gemini") {
-    providerBadge = `<span class="badge-info text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"><i class="fa-solid fa-brain mr-1"></i>Gemini 2.0 Flash LLM</span>`;
-  } else if (data.provider === "openai") {
-    providerBadge = `<span class="badge-info text-[10px] font-mono px-2 py-0.5 rounded-full"><i class="fa-solid fa-microchip mr-1"></i>OpenAI</span>`;
+  const prov = (data.provider || "").toLowerCase();
+  if (prov.includes("gemini")) {
+    providerBadge = `<span class="badge-info text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-medium"><i class="fa-solid fa-brain mr-1"></i>Gemini 3.6 Flash</span>`;
+  } else if (prov.includes("groq")) {
+    providerBadge = `<span class="badge-info text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-medium"><i class="fa-solid fa-bolt mr-1"></i>Groq Llama 3.3</span>`;
+  } else if (prov.includes("openai")) {
+    providerBadge = `<span class="badge-info text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium"><i class="fa-solid fa-microchip mr-1"></i>OpenAI GPT-4o</span>`;
+  } else if (prov.includes("ollama")) {
+    providerBadge = `<span class="badge-info text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-medium"><i class="fa-solid fa-server mr-1"></i>Local Ollama</span>`;
   } else {
-    providerBadge = `<span class="bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono px-2 py-0.5 rounded-full"><i class="fa-solid fa-brain mr-1"></i>Offline Heuristic</span>`;
+    providerBadge = `<span class="bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-mono px-2 py-0.5 rounded-full font-medium"><i class="fa-solid fa-robot mr-1"></i>${escapeHtml(data.provider || 'Offline')}</span>`;
   }
 
   // Safety status badge
