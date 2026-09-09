@@ -77,31 +77,35 @@ def query_ollama(prompt: str) -> str:
         return res.get("response", "").strip()
 
 def query_gemini(prompt: str, api_key: str) -> str:
-    """Directly route query to Google Gemini (Gemini 2.0 Flash / 1.5 Flash)."""
-    models = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    """Directly route query to Google Gemini with automatic model resolution."""
+    models = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     last_err = None
 
-    for model in models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    def call_model(model_name: str) -> Optional[str]:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": 1200
-            }
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1200}
         }
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
+            result_json = json.loads(response.read().decode("utf-8"))
+            candidates = result_json.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    return parts[0].get("text", "").strip()
+        return None
 
+    # 1. Try preferred models
+    for model in models:
         try:
-            with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
-                result_json = json.loads(response.read().decode("utf-8"))
-                candidates = result_json.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        return parts[0].get("text", "").strip()
+            res = call_model(model)
+            if res:
+                logger.info(f"Successfully generated code using Gemini model: {model}")
+                return res
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             last_err = f"Gemini API error ({model}): HTTP {e.code} - {err_body}"
@@ -109,6 +113,30 @@ def query_gemini(prompt: str, api_key: str) -> str:
         except Exception as e:
             last_err = f"Gemini API error ({model}): {e}"
             logger.warning(last_err)
+
+    # 2. Dynamic Discovery via ListModels if all preferred models returned 404
+    try:
+        logger.info("Discovering available Gemini models via ListModels API...")
+        list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        req_list = urllib.request.Request(list_url, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req_list, timeout=10, context=get_ssl_context()) as resp:
+            m_data = json.loads(resp.read().decode("utf-8"))
+            available_models = [
+                m["name"].replace("models/", "")
+                for m in m_data.get("models", [])
+                if "generateContent" in m.get("supportedGenerationMethods", [])
+            ]
+            for dyn_model in available_models:
+                if dyn_model not in models:
+                    try:
+                        res = call_model(dyn_model)
+                        if res:
+                            logger.info(f"Successfully generated code with discovered model: {dyn_model}")
+                            return res
+                    except Exception:
+                        continue
+    except Exception as list_err:
+        logger.warning(f"ListModels failed: {list_err}")
 
     raise RuntimeError(last_err or "Gemini API request failed.")
 
