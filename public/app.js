@@ -396,7 +396,22 @@ function renderPlotlyChart(elementId, chart) {
 
   const config = { responsive: true, displayModeBar: false };
 
-  if (chart.type === "bar") {
+  if (chart.type === "grouped_bar" || (chart.barmode === "group" && chart.series)) {
+    const palette = ["#6366f1", "#06b6d4", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6", "#3b82f6"];
+    const traces = chart.series.map((s, idx) => ({
+      type: "bar",
+      name: s.name,
+      x: chart.x,
+      y: s.y,
+      marker: { color: palette[idx % palette.length] },
+      opacity: 0.9
+    }));
+    Plotly.newPlot(el, traces, {
+      ...darkLayout,
+      barmode: "group",
+      legend: { font: { color: "#cbd5e1" }, orientation: "h", y: -0.2 }
+    }, config);
+  } else if (chart.type === "bar") {
     Plotly.newPlot(el, [{
       type: "bar",
       x: chart.x,

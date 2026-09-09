@@ -89,8 +89,52 @@ def generate_data_insights(query: str, result: Any, chart_config: Dict[str, Any]
                     "text": f"<strong>{row0_val}</strong> represents <strong>{pct0:.1f}%</strong> of total, while <strong>{row1_val}</strong> accounts for <strong>{pct1:.1f}%</strong>."
                 })
 
-        # 3. Numeric Leader & Concentration / Comparison
-        if num_cols and cat_cols and not rate_col and len(result) > 1:
+        # Multi-Numeric / Pivot Table Insights
+        if cat_cols and len(num_cols) > 1:
+            x_col = cat_cols[0]
+            best_val = -float('inf')
+            best_cat = ""
+            best_metric = ""
+            worst_val = float('inf')
+            worst_cat = ""
+            worst_metric = ""
+
+            for n_col in num_cols:
+                for idx, val in result[n_col].items():
+                    if pd.notna(val) and isinstance(val, (int, float, np.number)):
+                        if val > best_val:
+                            best_val = val
+                            best_cat = str(result.loc[idx, x_col])
+                            best_metric = str(n_col)
+                        if val < worst_val:
+                            worst_val = val
+                            worst_cat = str(result.loc[idx, x_col])
+                            worst_metric = str(n_col)
+
+            if best_val != -float('inf'):
+                insights.append({
+                    "type": "highlight",
+                    "icon": "fa-trophy",
+                    "title": "Peak Observation",
+                    "text": f"Highest value observed is <strong>{best_val:,.2f}</strong> for <strong>{best_cat}</strong> ({best_metric.replace('_', ' ')})."
+                })
+            if worst_val != float('inf') and worst_val < best_val:
+                insights.append({
+                    "type": "observation",
+                    "icon": "fa-arrow-down-short-wide",
+                    "title": "Lowest Observation",
+                    "text": f"Lowest value observed is <strong>{worst_val:,.2f}</strong> for <strong>{worst_cat}</strong> ({worst_metric.replace('_', ' ')})."
+                })
+
+            insights.append({
+                "type": "trend",
+                "icon": "fa-chart-column",
+                "title": "Grouped Comparison",
+                "text": f"The chart plots all <strong>{len(num_cols)} metrics</strong> side-by-side across each {x_col} for complete multi-variable visibility."
+            })
+
+        # 3. Numeric Leader & Concentration / Comparison (Single Metric)
+        if num_cols and cat_cols and len(num_cols) == 1 and not rate_col and len(result) > 1:
             metric = num_cols[0]
             cat = cat_cols[0]
             sorted_df = result.sort_values(by=metric, ascending=False)

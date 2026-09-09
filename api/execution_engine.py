@@ -15,7 +15,15 @@ def detect_chart_type(df: pd.DataFrame) -> Dict[str, Any] | None:
     """
     Intelligently infer the best Plotly chart configuration based on result dataframe columns.
     """
-    if df.empty or len(df.columns) < 2:
+    if df.empty:
+        return None
+
+    # If df has an index with a name or is not a default RangeIndex, reset it so row labels are treated as a column
+    if df.index.name is not None or not isinstance(df.index, pd.RangeIndex):
+        df = df.reset_index()
+        df.columns.name = None
+
+    if len(df.columns) < 2:
         return None
 
     cols = list(df.columns)
@@ -67,7 +75,29 @@ def detect_chart_type(df: pd.DataFrame) -> Dict[str, Any] | None:
                 "values": df[metric].fillna(0).tolist()
             }
 
-    # Rule 3: 1 Category + 1 or more Numeric -> Bar Chart
+    # Rule 3A: Pivot / Multi-Numeric Table -> Grouped Bar Chart (barmode='group')
+    # Detects when a DataFrame has multiple numeric columns and groups them side-by-side
+    if cat_cols and len(num_cols) > 1:
+        x_col = cat_cols[0]
+        # Flatten via pandas .melt() to ensure valid structure
+        melted = df.melt(id_vars=[x_col], value_vars=num_cols, var_name="Metric", value_name="Value")
+        series_list = []
+        for n_col in num_cols:
+            series_list.append({
+                "name": str(n_col).replace("_", " "),
+                "y": df[n_col].fillna(0).tolist()
+            })
+        return {
+            "type": "grouped_bar",
+            "barmode": "group",
+            "title": f"Metrics Comparison across {x_col.replace('_', ' ')}",
+            "x": df[x_col].astype(str).tolist(),
+            "x_label": x_col,
+            "series": series_list,
+            "melted": melted.replace({np.nan: None}).to_dict(orient="records")
+        }
+
+    # Rule 3B: 1 Category + 1 Numeric -> Single Bar Chart
     if (cat_cols or len(cols) == 2) and num_cols:
         x_col = cat_cols[0] if cat_cols else cols[0]
         y_col = num_cols[0]
@@ -166,6 +196,11 @@ def execute_generated_code(code: str, df: pd.DataFrame, query: str = "") -> Dict
             result = result.reset_index()
 
         if isinstance(result, pd.DataFrame):
+            # If the index is meaningful (e.g. named or not a simple 0..N RangeIndex from groupby/pivot_table), reset it
+            if result.index.name is not None or not isinstance(result.index, pd.RangeIndex):
+                result = result.reset_index()
+                result.columns.name = None
+
             total_rows = len(result)
             truncated_df = result.head(MAX_RESULT_ROWS)
             
