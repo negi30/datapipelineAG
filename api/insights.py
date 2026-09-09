@@ -124,7 +124,9 @@ def generate_data_insights(query: str, result: Any, chart_config: Dict[str, Any]
                         value_counts = source_df[m_col].astype(str).str.strip().value_counts()
                         multi_entities = set(value_counts[value_counts >= 2].index)
                         
-                        source_metric_cols = [c for c in source_df.columns if str(c).lower() == str(lead_metric).lower() or ('stream' in str(c).lower() and 'total' in str(c).lower()) or pd.api.types.is_numeric_dtype(source_df[c])]
+                        source_metric_cols = [c for c in source_df.columns if str(c).lower() == str(lead_metric).lower()]
+                        if not source_metric_cols:
+                            source_metric_cols = [c for c in source_df.columns if any(w in str(c).lower() for w in str(lead_metric).lower().split()) and pd.api.types.is_numeric_dtype(source_df[c]) and str(c).lower() not in INDEX_LIKE_COLS]
                         cat_note = ""
                         if multi_entities and source_metric_cols:
                             sm_col = source_metric_cols[0]
