@@ -36,13 +36,21 @@ Engineered with dual runtime support:
   - **Scatter Plots**: Multi-variable numeric relationships.
 - **Data Export**: One-click CSV export of query results.
 
-### 6. Memory Optimization & 10MB Ingestion (`api/data_loader.py`)
+### 6. Automated Data & Graph Insights (`api/insights.py`)
+- Automatically analyzes the executed query result and chart configuration to deliver actionable business intelligence alongside every table and graph:
+  - **Peak & Trough Analysis**: Detects maximum, minimum, and percentage gaps (e.g. "Highest turnover occurs at 0 Years at Company (36.4%), while lowest is at 10 Years (15.0%)").
+  - **Disparity & Ratio Metrics**: Identifies relative multipliers (e.g. "Rate is 2.4x higher for new hires").
+  - **Concentration Analysis**: Calculates market share of top categories (e.g. "Top 3 categories command 68% of total volume").
+  - **Visual Chart Interpretation**: Guides the user on how to read the generated Plotly graph (donut distribution, time-series shifts, bar comparisons).
+  - **Strategic Recommendations**: Suggests targeted business next steps based on risk cohorts or leaders.
+
+### 7. Memory Optimization & 10MB Ingestion (`api/data_loader.py`)
 - Built specifically to prevent memory inflation on serverless environments.
 - Downcasts float64 to float32 and int64 to int32.
 - Converts low-cardinality strings to memory-efficient pandas `category` dtype, slashing memory footprint by 75-80%.
 - Supports direct CSV & Parquet uploads up to 10MB, plus remote URL loading.
 
-### 7. Dual AI Generation Engine (`api/agent.py`)
+### 8. Dual AI Generation Engine (`api/agent.py`)
 - **Cloud LLMs**: Native support for Google Gemini (`gemini-2.0-flash`, `gemini-1.5-flash`) and OpenAI (`gpt-4o-mini`).
 - **Built-in Offline Heuristic Analyzer**: Works out-of-the-box with zero configuration or API key. Handles common analytical queries (top brands, state rankings, store margins, monthly trends, ratings) immediately.
 

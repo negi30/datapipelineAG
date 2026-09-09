@@ -247,8 +247,37 @@ function appendAgentResponse(data) {
       return `<tr class="${i % 2 === 0 ? 'bg-slate-900/40' : 'bg-slate-950/40'}">${cells}</tr>`;
     }).join("");
 
+    // Build Automated Insights HTML
+    let insightsHtml = "";
+    if (exec.insights && exec.insights.length > 0) {
+      insightsHtml = `
+        <div class="bg-gradient-to-r from-indigo-950/30 to-slate-900 border border-indigo-500/30 rounded-xl p-4 space-y-3">
+          <div class="flex items-center gap-2 text-xs font-semibold text-indigo-300">
+            <i class="fa-solid fa-lightbulb text-amber-400 text-sm"></i>
+            <span>Data Observations & Graph Insights</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            ${exec.insights.map(ins => `
+              <div class="bg-slate-950/70 border border-slate-800/90 p-3 rounded-lg text-xs flex items-start gap-2.5 shadow-sm">
+                <div class="h-6 w-6 rounded-md bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-500/20">
+                  <i class="fa-solid ${ins.icon} text-xs"></i>
+                </div>
+                <div>
+                  <div class="font-semibold text-slate-200 text-xs mb-0.5">${ins.title}</div>
+                  <div class="text-slate-400 text-[11px] leading-relaxed">${ins.text}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
     resultContent = `
       <div class="space-y-4">
+        <!-- Automated Graph & Observation Insights -->
+        ${insightsHtml}
+
         <!-- Interactive Chart Placeholder -->
         ${exec.chart ? `<div id="${chartId}" class="w-full h-72 rounded-xl bg-slate-950 border border-slate-800 p-2"></div>` : ""}
 

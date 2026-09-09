@@ -85,7 +85,7 @@ def run_query(payload: QueryRequest):
         note = agent_res["note"]
 
         # 2. Safely execute code
-        exec_res = execute_generated_code(generated_code, dataset_manager.df)
+        exec_res = execute_generated_code(generated_code, dataset_manager.df, query=payload.query.strip())
 
         return {
             "query": payload.query,

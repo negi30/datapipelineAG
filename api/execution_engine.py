@@ -1,3 +1,4 @@
+from api.insights import generate_data_insights
 import re
 import logging
 import traceback
@@ -74,7 +75,7 @@ def detect_chart_type(df: pd.DataFrame) -> Dict[str, Any] | None:
 
     return None
 
-def execute_generated_code(code: str, df: pd.DataFrame) -> Dict[str, Any]:
+def execute_generated_code(code: str, df: pd.DataFrame, query: str = "") -> Dict[str, Any]:
     """
     Safely execute the LLM-generated code against DataFrame 'df'.
     Validates safety, syntax, and captures the 'result' output.
@@ -163,6 +164,7 @@ def execute_generated_code(code: str, df: pd.DataFrame) -> Dict[str, Any]:
                         r[k] = round(float(v), 2)
 
             chart_config = detect_chart_type(result)
+            insights = generate_data_insights(query, result, chart_config)
 
             return {
                 "success": True,
@@ -172,7 +174,8 @@ def execute_generated_code(code: str, df: pd.DataFrame) -> Dict[str, Any]:
                 "displayed_rows": len(records),
                 "columns": list(result.columns),
                 "data": records,
-                "chart": chart_config
+                "chart": chart_config,
+                "insights": insights
             }
 
         # Scalar or simple collection
