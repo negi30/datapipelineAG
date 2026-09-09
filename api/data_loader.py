@@ -1,3 +1,19 @@
+import ssl
+
+def get_ssl_context():
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        pass
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    except Exception:
+        return ssl._create_unverified_context()
+
 import os
 import io
 import urllib.request
@@ -103,7 +119,7 @@ class DatasetManager:
             url,
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         )
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
             content_length = response.headers.get('Content-Length')
             if content_length and int(content_length) > MAX_UPLOAD_BYTES:
                 raise ValueError(f"Remote dataset exceeds maximum size of {MAX_UPLOAD_BYTES // (1024*1024)}MB")

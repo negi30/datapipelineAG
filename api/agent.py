@@ -3,6 +3,22 @@ import json
 import logging
 import urllib.request
 import urllib.error
+import ssl
+
+def get_ssl_context():
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        pass
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    except Exception:
+        return ssl._create_unverified_context()
+
 import pandas as pd
 from typing import Dict, Any, Optional
 
@@ -79,7 +95,7 @@ def query_gemini(prompt: str, api_key: str) -> str:
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
         try:
-            with urllib.request.urlopen(req, timeout=15) as response:
+            with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
                 result_json = json.loads(response.read().decode("utf-8"))
                 candidates = result_json.get("candidates", [])
                 if candidates:
@@ -116,7 +132,7 @@ def query_openai_compatible(prompt: str, api_key: str, base_url: str = "https://
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
     try:
-        with urllib.request.urlopen(req, timeout=15) as response:
+        with urllib.request.urlopen(req, timeout=15, context=get_ssl_context()) as response:
             result_json = json.loads(response.read().decode("utf-8"))
             return result_json["choices"][0]["message"]["content"].strip()
     except urllib.error.HTTPError as e:
