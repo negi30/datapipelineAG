@@ -34,6 +34,22 @@ async function fetchDatasetInfo() {
     // Populate Schema Tab
     document.getElementById("schema-raw").textContent = data.schema || "No schema extracted.";
 
+    // Populate Dynamic Ignored Columns
+    const ignoredContainer = document.getElementById("ignored-cols-list");
+    if (ignoredContainer) {
+      ignoredContainer.innerHTML = "";
+      if (data.ignored_columns && data.ignored_columns.length > 0) {
+        data.ignored_columns.forEach(col => {
+          const badge = document.createElement("span");
+          badge.className = "text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-300 font-mono border border-slate-700 flex items-center gap-1.5";
+          badge.innerHTML = `<i class="fa-solid fa-filter-circle-xmark text-[10px] text-amber-400"></i> ${escapeHtml(col)}`;
+          ignoredContainer.appendChild(badge);
+        });
+      } else {
+        ignoredContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No columns ignored (all columns active)</span>`;
+      }
+    }
+
     // Populate Summary Tab
     document.getElementById("summary-raw").textContent = data.summary || "No summary available.";
 

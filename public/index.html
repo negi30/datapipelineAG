@@ -172,20 +172,15 @@
         </div>
 
         <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
-          <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Ignored Columns in Schema</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Dynamically Ignored Columns (Zero-Variance & Unique IDs)</h3>
+            <span class="text-[10px] text-slate-500 font-mono">Dynamic Cardinality Filter</span>
+          </div>
           <p class="text-xs text-slate-400 leading-relaxed">
-            The extractor prevents high-cardinality metadata from bloating LLM token context:
+            Columns automatically filtered to prevent token bloat and noise (constants with 1 unique value, 100% unique row IDs, or near-unique text):
           </p>
-          <div class="flex flex-wrap gap-1.5 pt-1">
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">store</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Product ID</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Product Title</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Brand</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Unit</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">Quantity Per Case</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">State</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">City</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono border border-slate-700">District</span>
+          <div id="ignored-cols-list" class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-xs text-slate-500 italic">Analyzing dataset columns...</span>
           </div>
         </div>
 

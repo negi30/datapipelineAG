@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-from utils.schema_extractor import extract_schema, extract_data_dictionary
+from utils.schema_extractor import extract_schema, extract_data_dictionary, get_ignored_columns
 from utils.summary_generator import generate_summary
 from api.config import DEFAULT_DATASET_PATH, MAX_UPLOAD_BYTES
 
@@ -55,18 +55,21 @@ class DatasetManager:
             # Optimize integers
             elif dtype == 'int64':
                 df[col] = pd.to_numeric(df[col], downcast='integer')
-            # Convert low-cardinality string columns to category
-            elif dtype == 'object':
-                num_unique = df[col].nunique()
-                num_total = len(df[col])
-                if num_total > 0 and (num_unique / num_total) < 0.5 and num_unique < 500:
-                    df[col] = df[col].astype('category')
+            # Optimize floats
+            elif pd.api.types.is_float_dtype(df[col]):
+                df[col] = pd.to_numeric(df[col], downcast='float')
             # Detect dates
-            elif 'date' in col.lower() and dtype == 'object':
+            elif 'date' in str(col).lower() and (pd.api.types.is_string_dtype(df[col]) or pd.api.types.is_object_dtype(df[col])):
                 try:
                     df[col] = pd.to_datetime(df[col])
                 except Exception:
                     pass
+            # Convert low-cardinality string/object columns to category
+            elif (pd.api.types.is_string_dtype(df[col]) or pd.api.types.is_object_dtype(df[col])) and not isinstance(df[col].dtype, pd.CategoricalDtype):
+                num_unique = df[col].nunique()
+                num_total = len(df[col])
+                if num_unique <= 50 or (num_total > 0 and (num_unique / num_total) < 0.5 and num_unique < 500):
+                    df[col] = df[col].astype('category')
 
         final_mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
         logger.info(f"Optimized DataFrame memory from {initial_mem:.2f}MB to {final_mem:.2f}MB")
@@ -139,6 +142,7 @@ class DatasetManager:
         sample_records = self.df.head(10).to_dict(orient="records")
         columns_info = [{"name": c, "type": str(self.df[c].dtype)} for c in self.df.columns]
 
+        ignored = get_ignored_columns(self.df) if self.df is not None else []
         return {
             "dataset_name": self.dataset_name,
             "rows": len(self.df),
@@ -148,7 +152,8 @@ class DatasetManager:
             "schema": self.schema,
             "summary": self.summary,
             "data_dictionary": self.data_dictionary,
-            "sample_rows": sample_records
+            "sample_rows": sample_records,
+            "ignored_columns": ignored
         }
 
 # Global singleton dataset manager

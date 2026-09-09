@@ -10,9 +10,13 @@ Engineered with dual runtime support:
 
 ## 🚀 Key Functionalities & Features
 
-### 1. Schema Extractor (`utils/schema_extractor.py`)
-- Automatically extracts data types, summary statistics (mean, std) for numeric columns, and unique values for categorical, boolean, and date columns.
-- **Smart Metadata Exclusion (`to_ignore`)**: Automatically filters out high-cardinality metadata columns (`store`, `Product ID`, `Product Title`, `Brand`, `Unit`, `Quantity Per Case`, `State`, `City`, `District`) from unique value lists to prevent token bloat while keeping them available for aggregations and filtering in queries.
+### 1. Dynamic Schema Extractor (`utils/schema_extractor.py`)
+- **Dynamic Cardinality Filtering**: Eliminates hardcoded column lists. Automatically detects and ignores:
+  - Zero-variance constants (`nunique <= 1`, e.g. `EmployeeCount`, `Over18`, `StandardHours`).
+  - 100% Unique Identifiers (`nunique == len(df)`, e.g. `EmployeeNumber`, `Product ID`, `UUID`).
+  - High-cardinality free text (>90% uniqueness).
+  This preserves vital LLM token bandwidth and eliminates prompt noise across ANY dataset.
+- **Automated Column Typing**: Accurately extracts and reports numeric averages/deviations and categorical value distributions.
 
 ### 2. Statistical Summary Generator (`utils/summary_generator.py`)
 - Computes comprehensive dataset statistics using pandas `df.describe(include='all')`.
