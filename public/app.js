@@ -437,13 +437,25 @@ function renderPlotlyChart(elementId, chart) {
       marker: { colors: ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#84cc16"] }
     }], darkLayout, config);
   } else if (chart.type === "scatter") {
-    Plotly.newPlot(el, [{
+    const trace = {
       type: "scatter",
       mode: "markers",
       x: chart.x,
       y: chart.y,
-      marker: { color: "#06b6d4", size: 8, opacity: 0.8 }
-    }], darkLayout, config);
+      marker: { color: "#06b6d4", size: 6, opacity: 0.65 }
+    };
+    if (chart.text && Array.isArray(chart.text)) {
+      trace.text = chart.text;
+      trace.hovertemplate = `<b>%{text}</b><br>${chart.x_label || 'X'}: %{x:,.0f}<br>${chart.y_label || 'Y'}: %{y:,.0f}<extra></extra>`;
+    } else {
+      trace.hovertemplate = `${chart.x_label || 'X'}: %{x:,.0f}<br>${chart.y_label || 'Y'}: %{y:,.0f}<extra></extra>`;
+    }
+    const scatterLayout = {
+      ...darkLayout,
+      xaxis: { ...darkLayout.xaxis, title: { text: chart.x_label || "", font: { color: "#94a3b8", size: 11 } } },
+      yaxis: { ...darkLayout.yaxis, title: { text: chart.y_label || "", font: { color: "#94a3b8", size: 11 } } }
+    };
+    Plotly.newPlot(el, [trace], scatterLayout, config);
   }
 }
 

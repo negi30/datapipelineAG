@@ -45,7 +45,12 @@ CRITICAL RULES (VIOLATIONS WILL BE REJECTED):
    result = df.groupby('Attrition')['MonthlyIncome'].agg(Mean='mean', Median='median', Std='std', Min='min', Max='max').reset_index()
 4. Always return the answer in variable `result`.
 5. If aggregating, always use `.reset_index()` so it produces clean tabular data.
-6. Return ONLY bare python code, or code inside ```python ``` fences. Do not include conversational text.
+6. SCATTER PLOTS & RELATIONSHIPS: If the user asks for a scatter plot, correlation, or relationship between two numeric columns (e.g. Peak Streams vs Total Streams), select those continuous numeric columns directly:
+   `result = df[['Peak Streams', 'Total Streams']]` (or include a label column for hover tooltips: `result = df[['Song Name', 'Peak Streams', 'Total Streams']]`).
+   DO NOT perform a groupby on continuous numeric values.
+7. GROUP AVERAGES & SAMPLE SIZE: When computing average/mean metrics across groups (e.g. 'average streams per song by artist', 'average sales per product'), include both the average metric and the sample count column (`count`) so that groups with only 1 item (N=1 outliers) do not distort rankings:
+   `result = df.groupby('Artist Name').agg(avg_streams=('Total Streams', 'mean'), song_count=('Song Name', 'count')).reset_index().sort_values(by='avg_streams', ascending=False).head(5)`
+8. Return ONLY bare python code, or code inside ```python ``` fences. Do not include conversational text.
 """
 
 def sanitize_code(code: str) -> str:
