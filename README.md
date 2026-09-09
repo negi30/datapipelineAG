@@ -1,195 +1,37 @@
-# 📊 DataChat AI Agent - 10MB Dataset Analytics & Runner
+# DatapipelineA1: Agentic Data Analysis Pipeline 🚀
 
-A production-ready, full-stack AI Data Analysis Application built for tabular datasets (CSV & Parquet up to **10MB**). It enables natural language questions, translates them into verified Pandas code, safely executes the code in a sandboxed environment, and delivers interactive tables and Plotly visualizations.
+## 📖 Overview
+**DatapipelineA1** is an intelligent, locally-executed data analysis application that transforms natural language questions into deterministic Python code. 
 
-Engineered with dual runtime support:
-- **Local Runnable**: Launch with a single command (`python app.py`) or use the terminal CLI (`python run_cli.py`).
-- **Vercel Serverless Ready**: Configured with `vercel.json` and optimized dependencies to deploy effortlessly within Vercel's serverless size and memory limits.
+Rather than sending raw, potentially sensitive datasets to an external Large Language Model (LLM), DatapipelineA1 utilizes an **Agentic Data Pipeline**. It automatically extracts the structural schema and statistical metadata of an uploaded CSV, passes only that lightweight context to the LLM (OpenAI GPT-4o) to generate strict pandas or Plotly code, and then securely executes that code locally. 
 
----
+This architecture ensures **100% mathematical accuracy**, strict **data privacy**, and massive **token efficiency**—solving the core limitations of standard LLM data-chat interfaces.
 
-## 🚀 Key Functionalities & Features
+## ✨ Key Features
+- **Privacy-First Processing:** Raw data never leaves your local machine; only the dataset schema and summary statistics are sent to the LLM to generate the processing logic.
+- **Deterministic Accuracy:** Bypasses LLM hallucinations in mathematics by forcing the AI to act exclusively as a code generator, while the local Python environment handles the actual calculations.
+- **Dynamic Visualizations:** Automatically writes and safely executes Plotly code to render interactive charts and graphs based on natural language prompts.
+- **Two-Step Query Verification:** Optimizes API costs by first returning a "Result Count" preview, allowing users to verify query accuracy before generating a full textual synthesis.
+- **Automated Schema Extraction:** Instantly profiles uploaded CSVs to generate data dictionaries, column types, and statistical boundaries.
 
-### 1. Dynamic Schema Extractor (`utils/schema_extractor.py`)
-- **Dynamic Cardinality Filtering**: Eliminates hardcoded column lists. Automatically detects and ignores:
-  - Zero-variance constants (`nunique <= 1`, e.g. `EmployeeCount`, `Over18`, `StandardHours`).
-  - 100% Unique Identifiers (`nunique == len(df)`, e.g. `EmployeeNumber`, `Product ID`, `UUID`).
-  - High-cardinality free text (>90% uniqueness).
-  This preserves vital LLM token bandwidth and eliminates prompt noise across ANY dataset.
-- **Automated Column Typing**: Accurately extracts and reports numeric averages/deviations and categorical value distributions.
+## 💡 Example Use Cases
+* **Financial Time-Series Analysis:** Extract and process specific fields—such as tracking premiums from public financial disclosures (e.g., nl4 filings)—across thousands of rows to gain historical insights without exposing the raw corporate data to external servers.
+* **Sports Analytics & Machine Learning Prep:** Query comprehensive NBA basketball or Premier League soccer statistics to identify player performance metrics, aggregate seasonal data, or generate heatmaps to use as features for predictive machine learning models.
+* **HR & Attrition Data:** Analyze employee turnover rates across departments to isolate retention bottlenecks.
 
-### 2. Statistical Summary Generator (`utils/summary_generator.py`)
-- Computes comprehensive dataset statistics using pandas `df.describe(include='all')`.
-- Integrated with `rich.console` for beautiful terminal logging and debugging.
+## 🧰 Tech Stack
+- **Backend Orchestration:** FastAPI, Uvicorn, Python `exec()` sandboxing
+- **AI / LLM Framework:** LangChain, OpenAI API (GPT-4o)
+- **Data Processing & Viz:** Pandas, Plotly (Express & Graph Objects)
+- **Frontend UI:** Streamlit
 
-### 3. Business Data Dictionary (`data/data_dictionary.txt`)
-- Extracted via `extract_data_dictionary(df)`. Provides business context and field definitions so the AI agent understands domain terms (e.g., mapping "margin" to `(Revenue - Cost) / Revenue`).
+## 📦 Installation & Setup
 
-### 4. Code Safety & Denylist Sandbox (`utils/code_safety.py`)
-- **Denylist Validation (`is_code_safe`)**: Rejects any code containing dangerous system calls or escape hatches (`import`, `open(`, `exec(`, `eval(`, `os.`, `sys.`, `subprocess`, `__`, etc.).
-- **Code Fence Stripper (`strip_code_fences`)**: Cleans off markdown blocks (` ```python ... ``` `).
-- **AST Syntax Checking (`validate_python_syntax`)**: Verifies code validity before execution.
+### Prerequisites
+- Python 3.10 or higher
+- An active OpenAI API Key
 
-### 5. Safe Execution Engine (`api/execution_engine.py`)
-- Executes generated Python/Pandas code in a restricted scope `{"df": df, "pd": pd, "np": np}` with strict execution timeouts.
-- Captures scalar metrics, lists, dicts, or DataFrames.
-- **Automatic Chart Detection**: Ingests result DataFrames and auto-generates Plotly chart specifications:
-  - **Bar Charts**: 1 categorical column + numeric metrics.
-  - **Time Series Line Charts**: Date columns + numeric metrics.
-  - **Donut / Pie Charts**: Low-cardinality category distributions.
-  - **Scatter Plots**: Multi-variable numeric relationships.
-- **Data Export**: One-click CSV export of query results.
-
-### 6. Automated Data & Graph Insights (`api/insights.py`)
-- Automatically analyzes the executed query result and chart configuration to deliver actionable business intelligence alongside every table and graph:
-  - **Peak & Trough Analysis**: Detects maximum, minimum, and percentage gaps (e.g. "Highest turnover occurs at 0 Years at Company (36.4%), while lowest is at 10 Years (15.0%)").
-  - **Disparity & Ratio Metrics**: Identifies relative multipliers (e.g. "Rate is 2.4x higher for new hires").
-  - **Concentration Analysis**: Calculates market share of top categories (e.g. "Top 3 categories command 68% of total volume").
-  - **Visual Chart Interpretation**: Guides the user on how to read the generated Plotly graph (donut distribution, time-series shifts, bar comparisons).
-  - **Strategic Recommendations**: Suggests targeted business next steps based on risk cohorts or leaders.
-
-### 7. Memory Optimization & 10MB Ingestion (`api/data_loader.py`)
-- Built specifically to prevent memory inflation on serverless environments.
-- Downcasts float64 to float32 and int64 to int32.
-- Converts low-cardinality strings to memory-efficient pandas `category` dtype, slashing memory footprint by 75-80%.
-- Supports direct CSV & Parquet uploads up to 10MB, plus remote URL loading.
-
-### 8. Dual AI Generation Engine (`api/agent.py`)
-- **Cloud LLMs**: Native support for Google Gemini (`gemini-2.0-flash`, `gemini-1.5-flash`) and OpenAI (`gpt-4o-mini`).
-- **Built-in Offline Heuristic Analyzer**: Works out-of-the-box with zero configuration or API key. Handles common analytical queries (top brands, state rankings, store margins, monthly trends, ratings) immediately.
-
----
-
-## 📁 Project Structure
-
-```
-data-agent/
-├── api/
-│   ├── index.py              # FastAPI server & Vercel serverless entrypoint
-│   ├── agent.py              # AI Agent (Gemini / OpenAI / Offline Heuristics)
-│   ├── execution_engine.py   # Sandboxed code execution & Plotly inference
-│   ├── data_loader.py        # Dataset manager, memory downcasting & 10MB loader
-│   └── config.py             # App configuration & environment variables
-├── utils/
-│   ├── __init__.py
-│   ├── summary_generator.py  # User's summary generator with rich console
-│   ├── schema_extractor.py   # User's schema extractor with ignored columns
-│   └── code_safety.py        # User's code safety validator & fence stripper
-├── public/
-│   ├── index.html            # High-polish interactive web dashboard
-│   ├── app.js                # Frontend state, charts, and query handling
-│   └── style.css             # Modern styling & theme overrides
-├── data/
-│   ├── sample_retail_data.csv# Bundled sample retail dataset
-│   └── data_dictionary.txt   # Field business definitions
-├── app.py                    # Local web runner (auto-opens browser)
-├── run_cli.py                # Terminal interactive REPL
-├── requirements.txt          # Lightweight dependencies for Vercel (< 500MB lambda)
-├── vercel.json               # Vercel deployment configuration
-├── .env.example              # Environment variables template
-└── README.md                 # Complete documentation
-```
-
----
-
-## 🏃 Running Locally
-
-### 1. Prerequisites
-- Python 3.10, 3.11, or 3.12 installed.
-
-### 2. Installation
-Clone or navigate to the project directory:
+### 1. Clone the Repository
 ```bash
-cd /Users/neilnegi/.gemini/antigravity/scratch/data-agent
-```
-
-Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Launch Web Application
-Run the launcher:
-```bash
-python app.py
-```
-This automatically starts the server and opens your browser at:
-👉 **`http://localhost:8000`**
-
-### 4. Or Run via Terminal CLI
-For terminal lovers, an interactive REPL with `rich` console styling is available:
-```bash
-python run_cli.py
-```
-Commands in CLI:
-- Type any question (e.g. `top 5 brands by revenue`, `monthly sales trend`)
-- Type `schema` to view the schema table
-- Type `summary` to view statistical properties
-- Type `dict` to view the business definitions
-- Type `exit` to quit
-
----
-
-## ☁️ Deploying to Vercel Online
-
-This project is pre-configured for Vercel via `@vercel/python` and `vercel.json`.
-
-### Option A: Deploy via Vercel CLI (Fastest)
-
-1. Install the Vercel CLI if you haven't already:
-```bash
-npm install -g vercel
-```
-
-2. Log in to Vercel:
-```bash
-vercel login
-```
-
-3. Deploy from the project root:
-```bash
-vercel --prod
-```
-
-### Option B: Deploy via GitHub / Vercel Web Dashboard
-
-1. Push this directory to a GitHub repository:
-```bash
-git init
-git add .
-git commit -m "Initial commit of DataChat AI Agent"
-git branch -M main
-git remote add origin https://github.com/your-username/your-repo.git
-git push -u origin main
-```
-
-2. Open your [Vercel Dashboard](https://vercel.com/dashboard) and click **"Add New Project"**.
-3. Import your GitHub repository.
-4. **Environment Variables** (Optional, configure under Project Settings -> Environment Variables):
-   - `GEMINI_API_KEY`: Your Google Gemini API Key (e.g., from Google AI Studio).
-   - `OPENAI_API_KEY`: (Optional) Your OpenAI API Key.
-   - `MAX_DATASET_MB`: `10`
-5. Click **Deploy**. Vercel will automatically build the Python serverless function and static frontend!
-
----
-
-## 🔌 API Reference
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Healthcheck and active dataset status |
-| `GET` | `/api/info` | Returns dataset row count, columns, schema, summary, and data dictionary |
-| `POST` | `/api/query` | Submits natural language question -> returns generated code, safety check, data records, and chart configuration |
-| `POST` | `/api/upload` | Uploads a custom CSV or Parquet file (up to 10MB) |
-| `POST` | `/api/load-url` | Downloads and activates a dataset from an external URL |
-| `POST` | `/api/reset` | Resets the active dataset to the default retail sample |
-
----
-
-## 🛡️ Security Note
-The execution engine enforces a strict security policy using `utils/code_safety.py` and AST syntax tree verification. All executions are scoped to safe in-memory operations on the pandas DataFrame, preventing unauthorized system calls, network access, or shell escapes.
-
-### 9. Statistical Integrity & Auto-Charting Guardrails
-- **Prohibition of Part-to-Whole Fallacies**: Donut and Pie charts are strictly prohibited on calculated means, averages, ratings, scores, and continuous metrics (e.g. `YearsAtCompany`, `Age`, `MonthlyIncome`).
-- **Bar Chart Fallback**: Averages across categories are mapped to Bar Charts to honestly represent comparative magnitudes.
-- **Additive Part-to-Whole Enforcement**: Pie and Donut charts are restricted exclusively to additive counts, frequencies, headcounts, or percentage shares that sum to a total.
+git clone https://github.com/negi30/datapipelineA1.git
+cd datapipelinea1
