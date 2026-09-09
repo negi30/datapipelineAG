@@ -59,12 +59,12 @@ def detect_chart_type(df: pd.DataFrame, query: str = "") -> Dict[str, Any] | Non
     q_lower = (query or "").lower()
     is_scatter_query = any(w in q_lower for w in ["scatter", "s plot", "relationship", "correlation", "vs", "versus"])
 
-    # Rule 1: Explicit Scatter Query or 2+ Numeric Columns with No Categories
-    # Prevents the "Self-Mapping Bug" where two continuous metrics got hijacked by Bar Chart
-    if len(num_cols) >= 2 and (not cat_cols or is_scatter_query):
+    # Rule 1: Explicit Scatter Query or 2+ Numeric Columns with No Categories or High Row Count (>30)
+    # Prevents the "Self-Mapping Bug" and 11,000-bar rendering wall
+    if len(num_cols) >= 2 and (not cat_cols or is_scatter_query or len(df) > 30):
         x_col = num_cols[0]
         y_col = num_cols[1]
-        hover_labels = df[cat_cols[0]].astype(str).tolist() if cat_cols else None
+        hover_labels = [str(x) if pd.notna(x) else "" for x in df[cat_cols[0]].tolist()] if cat_cols else None
         
         # Cap scatter points to 10,000 for browser DOM performance
         plot_df = df.head(10000)
@@ -181,7 +181,8 @@ def detect_chart_type(df: pd.DataFrame, query: str = "") -> Dict[str, Any] | Non
         x_col = num_cols[0]
         y_col = num_cols[1]
         plot_df = df.head(10000)
-        return {
+        hover_labels = [str(x) if pd.notna(x) else "" for x in df[cat_cols[0]].tolist()] if cat_cols else None
+        chart_res = {
             "type": "scatter",
             "title": f"{y_col.replace('_', ' ')} vs {x_col.replace('_', ' ')}",
             "x": plot_df[x_col].fillna(0).tolist(),
@@ -189,8 +190,28 @@ def detect_chart_type(df: pd.DataFrame, query: str = "") -> Dict[str, Any] | Non
             "x_label": x_col,
             "y_label": y_col
         }
+        if hover_labels:
+            chart_res["text"] = hover_labels[:len(plot_df)]
+        return chart_res
 
     return None
+
+def sanitize_json_object(obj):
+    """Replace float NaN, Infinity, -Infinity with None or clean numbers to satisfy strict JSON encoders."""
+    if isinstance(obj, float):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, (np.floating, np.integer)):
+        val = float(obj) if isinstance(obj, np.floating) else int(obj)
+        if isinstance(val, float) and (np.isnan(val) or np.isinf(val)):
+            return None
+        return val
+    elif isinstance(obj, dict):
+        return {k: sanitize_json_object(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [sanitize_json_object(v) for v in obj]
+    return obj
 
 def execute_generated_code(code: str, df: pd.DataFrame, query: str = "") -> Dict[str, Any]:
     """
@@ -285,7 +306,7 @@ def execute_generated_code(code: str, df: pd.DataFrame, query: str = "") -> Dict
             chart_config = detect_chart_type(result, query=query)
             insights = generate_data_insights(query, result, chart_config, source_df=df)
 
-            return {
+            return sanitize_json_object({
                 "success": True,
                 "code": clean_code,
                 "result_type": "dataframe",
@@ -295,7 +316,7 @@ def execute_generated_code(code: str, df: pd.DataFrame, query: str = "") -> Dict
                 "data": records,
                 "chart": chart_config,
                 "insights": insights
-            }
+            })
 
         # Scalar or simple collection
         if isinstance(result, (int, float, np.number)):
