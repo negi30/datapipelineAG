@@ -108,7 +108,12 @@ def query_gemini(prompt: str, api_key: str) -> str:
                 return res
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
-            last_err = f"Gemini API error ({model}): HTTP {e.code} - {err_body}"
+            if e.code == 429:
+                last_err = "Gemini Free Tier rate limit reached (15 requests/min). Please wait 5-10 seconds before asking the next question."
+            elif e.code == 403 or e.code == 400 and "API_KEY_INVALID" in err_body:
+                last_err = "Invalid Gemini API Key. Please verify your key from Google AI Studio (https://aistudio.google.com/app/apikey)."
+            else:
+                last_err = f"Gemini API error ({model}): HTTP {e.code} - {err_body}"
             logger.warning(last_err)
         except Exception as e:
             last_err = f"Gemini API error ({model}): {e}"
