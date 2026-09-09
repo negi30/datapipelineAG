@@ -184,3 +184,8 @@ git push -u origin main
 
 ## 🛡️ Security Note
 The execution engine enforces a strict security policy using `utils/code_safety.py` and AST syntax tree verification. All executions are scoped to safe in-memory operations on the pandas DataFrame, preventing unauthorized system calls, network access, or shell escapes.
+
+### 9. Statistical Integrity & Auto-Charting Guardrails
+- **Prohibition of Part-to-Whole Fallacies**: Donut and Pie charts are strictly prohibited on calculated means, averages, ratings, scores, and continuous metrics (e.g. `YearsAtCompany`, `Age`, `MonthlyIncome`).
+- **Bar Chart Fallback**: Averages across categories are mapped to Bar Charts to honestly represent comparative magnitudes.
+- **Additive Part-to-Whole Enforcement**: Pie and Donut charts are restricted exclusively to additive counts, frequencies, headcounts, or percentage shares that sum to a total.

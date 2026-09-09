@@ -4,6 +4,8 @@ import logging
 import urllib.request
 import urllib.error
 import ssl
+import pandas as pd
+from typing import Dict, Any, Optional
 
 def get_ssl_context():
     try:
@@ -19,10 +21,7 @@ def get_ssl_context():
     except Exception:
         return ssl._create_unverified_context()
 
-import pandas as pd
-from typing import Dict, Any, Optional
-
-from utils.code_safety import strip_code_fences
+from utils.code_safety import strip_code_fences, is_code_safe
 from api.config import GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
@@ -35,15 +34,37 @@ Your goal is to answer the user's analytical question by writing safe, efficient
 Dataset Context:
 - A DataFrame named `df` is already available in memory.
 - You can use `df`, `pd`, and `np`.
-- Do NOT import any modules (import statement is strictly forbidden).
-- Do NOT read or write files (open, os, sys, etc. are forbidden).
-- Always return the answer in variable `result` (e.g. `result = df.groupby('Department')['MonthlyIncome'].mean().reset_index()`).
-- If aggregating, always use `.reset_index()` so it produces clean columnar data.
-- Return ONLY bare python code, or code inside ```python ``` fences. Do not include conversational text or explanations.
+
+CRITICAL RULES (VIOLATIONS WILL BE REJECTED):
+1. STRICTLY FORBIDDEN: DO NOT write any `import` statements! (e.g. no `import matplotlib`, no `import seaborn`, no `import pandas`). Any import will cause security rejection.
+2. STRICTLY FORBIDDEN: DO NOT use matplotlib, seaborn, or any plotting library (no `plt.`, no `fig, ax = plt.subplots()`).
+   The web dashboard automatically renders interactive Plotly charts directly from your `result` DataFrame.
+3. If the user asks for a chart, plot, boxplot, comparison, or distribution, DO NOT draw a chart in Python.
+   Instead, COMPUTE the underlying summary data table (e.g. groupby, describe, or mean/median aggregations) and assign to `result`.
+   Example for income comparison by attrition:
+   result = df.groupby('Attrition')['MonthlyIncome'].agg(Mean='mean', Median='median', Std='std', Min='min', Max='max').reset_index()
+4. Always return the answer in variable `result`.
+5. If aggregating, always use `.reset_index()` so it produces clean tabular data.
+6. Return ONLY bare python code, or code inside ```python ``` fences. Do not include conversational text.
 """
 
+def sanitize_code(code: str) -> str:
+    """
+    Remove redundant harmless imports (like import pandas as pd, import numpy as np)
+    since pd and np are already provided in the execution scope.
+    """
+    lines = code.split("\n")
+    cleaned = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped in ["import pandas as pd", "import numpy as np", "import pandas", "import numpy"]:
+            continue
+        if stripped.startswith("from pandas import") or stripped.startswith("from numpy import"):
+            continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
 def is_ollama_available() -> bool:
-    """Check if a local Ollama server is running without requiring an API key."""
     try:
         req = urllib.request.Request("http://localhost:11434/api/tags")
         with urllib.request.urlopen(req, timeout=1) as resp:
@@ -52,8 +73,6 @@ def is_ollama_available() -> bool:
         return False
 
 def query_ollama(prompt: str) -> str:
-    """Call local Ollama instance."""
-    # Find installed model
     req = urllib.request.Request("http://localhost:11434/api/tags")
     with urllib.request.urlopen(req, timeout=2) as resp:
         tags = json.loads(resp.read().decode("utf-8"))
@@ -110,7 +129,7 @@ def query_gemini(prompt: str, api_key: str) -> str:
             err_body = e.read().decode("utf-8", errors="ignore")
             if e.code == 429:
                 last_err = "Gemini Free Tier rate limit reached (15 requests/min). Please wait 5-10 seconds before asking the next question."
-            elif e.code == 403 or e.code == 400 and "API_KEY_INVALID" in err_body:
+            elif e.code == 403 or (e.code == 400 and "API_KEY_INVALID" in err_body):
                 last_err = "Invalid Gemini API Key. Please verify your key from Google AI Studio (https://aistudio.google.com/app/apikey)."
             else:
                 last_err = f"Gemini API error ({model}): HTTP {e.code} - {err_body}"
@@ -119,7 +138,7 @@ def query_gemini(prompt: str, api_key: str) -> str:
             last_err = f"Gemini API error ({model}): {e}"
             logger.warning(last_err)
 
-    # 2. Dynamic Discovery via ListModels if all preferred models returned 404
+    # 2. Dynamic Discovery via ListModels if preferred models returned 404
     try:
         logger.info("Discovering available Gemini models via ListModels API...")
         list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
@@ -180,23 +199,16 @@ def generate_pandas_code(
     data_dictionary: str,
     custom_api_key: str = ""
 ) -> Dict[str, Any]:
-    """
-    STRICT LLM ROUTER:
-    Guarantees that EVERY query is routed through a real Large Language Model
-    (Google Gemini 2.0 Flash, OpenAI, Groq, or Local Ollama).
-    """
     api_key = custom_api_key.strip() or GEMINI_API_KEY or OPENAI_API_KEY or GROQ_API_KEY
 
-    # If no API key, check if local Ollama is running
     if not api_key:
         if is_ollama_available():
             logger.info("Routing query through local Ollama LLM...")
             prompt = f"DATASET COLUMNS:\n{list(df.columns)}\n\nSCHEMA:\n{schema}\n\nUSER QUESTION:\n{user_query}\n\nReturn Python code setting `result = ...`:"
             raw_code = query_ollama(prompt)
-            clean_code = strip_code_fences(raw_code)
+            clean_code = sanitize_code(strip_code_fences(raw_code))
             return {"code": clean_code, "provider": "ollama_local", "note": None}
         
-        # If neither is available, RAISE EXPLICIT ERROR so user knows an LLM key is needed
         raise ValueError(
             "NO_LLM_KEY: All queries must be routed through an LLM. Please provide a Google Gemini API Key "
             "(free from Google AI Studio: https://aistudio.google.com/app/apikey) or an OpenAI/Groq API key "
@@ -224,21 +236,41 @@ USER QUESTION:
 Write the Python code to compute the exact answer to the user question and assign it to `result`.
 Return ONLY executable Python code:"""
 
-    # Route according to key type
-    if api_key.startswith("gsk_"):
-        logger.info("Routing query to Groq LLM (llama-3.3-70b-versatile)...")
-        raw_code = query_openai_compatible(prompt, api_key, base_url="https://api.groq.com/openai/v1", model="llama-3.3-70b-versatile")
-        provider = "groq_llama33"
-    elif api_key.startswith("sk-") and not api_key.startswith("sk-ant-"):
-        logger.info("Routing query to OpenAI LLM (gpt-4o-mini)...")
-        raw_code = query_openai_compatible(prompt, api_key, base_url="https://api.openai.com/v1", model="gpt-4o-mini")
-        provider = "openai_gpt4o"
-    else:
-        logger.info("Routing query to Google Gemini 2.0 Flash LLM...")
-        raw_code = query_gemini(prompt, api_key)
-        provider = "gemini_2.0_flash"
+    def call_llm(p: str):
+        if api_key.startswith("gsk_"):
+            return query_openai_compatible(p, api_key, base_url="https://api.groq.com/openai/v1", model="llama-3.3-70b-versatile"), "groq_llama33"
+        elif api_key.startswith("sk-") and not api_key.startswith("sk-ant-"):
+            return query_openai_compatible(p, api_key, base_url="https://api.openai.com/v1", model="gpt-4o-mini"), "openai_gpt4o"
+        else:
+            return query_gemini(p, api_key), "gemini_3.6_flash"
 
-    clean_code = strip_code_fences(raw_code)
+    # Attempt 1
+    raw_code, provider = call_llm(prompt)
+    clean_code = sanitize_code(strip_code_fences(raw_code))
+
+    # Self-Correction Check: If code contains matplotlib/plotting imports or violates safety
+    if not is_code_safe(clean_code) or "matplotlib" in clean_code or "plt." in clean_code or "seaborn" in clean_code:
+        logger.warning(f"Initial LLM code contained forbidden patterns: {clean_code[:100]}. Triggering self-correction retry...")
+        retry_prompt = f"""{prompt}
+
+CRITICAL FIX REQUIRED:
+Your previous response contained forbidden statements (such as `import matplotlib` or `plt.`):
+```python
+{clean_code}
+```
+REMEMBER:
+1. STRICTLY FORBIDDEN: DO NOT write `import matplotlib` or use `plt.`. The web dashboard automatically creates the interactive charts from your `result` dataframe!
+2. DO NOT import any modules.
+3. Compute the underlying summary data table using ONLY `df`, `pd`, and `np`, and assign it to `result`.
+   Example for distribution / boxplot comparison:
+   result = df.groupby('Attrition')['MonthlyIncome'].agg(Mean='mean', Median='median', Std='std', Min='min', Max='max').reset_index()
+
+Return ONLY executable Python code:"""
+        try:
+            raw_code, provider = call_llm(retry_prompt)
+            clean_code = sanitize_code(strip_code_fences(raw_code))
+        except Exception as retry_err:
+            logger.error(f"Self-correction retry failed: {retry_err}")
 
     return {
         "code": clean_code,
