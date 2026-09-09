@@ -89,7 +89,7 @@ def generate_data_insights(query: str, result: Any, chart_config: Dict[str, Any]
                     "text": f"<strong>{row0_val}</strong> represents <strong>{pct0:.1f}%</strong> of total, while <strong>{row1_val}</strong> accounts for <strong>{pct1:.1f}%</strong>."
                 })
 
-        # 3. Numeric Leader & Concentration (e.g. Top Brand, Highest Revenue, Highest Salary)
+        # 3. Numeric Leader & Concentration / Comparison
         if num_cols and cat_cols and not rate_col and len(result) > 1:
             metric = num_cols[0]
             cat = cat_cols[0]
@@ -99,24 +99,40 @@ def generate_data_insights(query: str, result: Any, chart_config: Dict[str, Any]
             bottom_row = sorted_df.iloc[-1]
             total_sum = sorted_df[metric].sum()
 
-            top_share = (top_row[metric] / total_sum * 100) if total_sum > 0 else 0
-            
-            insights.append({
-                "type": "highlight",
-                "icon": "fa-crown",
-                "title": f"Top Performer by {metric.replace('_', ' ')}",
-                "text": f"<strong>{top_row[cat]}</strong> leads with <strong>{top_row[metric]:,.2f}</strong>, contributing <strong>{top_share:.1f}%</strong> of the total volume observed."
-            })
+            is_avg = any(w in metric.lower() for w in [
+                'mean', 'avg', 'average', 'median', 'year', 'age', 'income',
+                'salary', 'rate', 'price', 'cost', 'score', 'rating', 'distance',
+                'tenure', 'hour', 'level', 'experience', 'hike'
+            ])
 
-            if len(sorted_df) >= 3:
-                top_3_sum = sorted_df.head(3)[metric].sum()
-                top_3_share = (top_3_sum / total_sum * 100) if total_sum > 0 else 0
+            if is_avg:
+                # Comparative average insight (no additive volume fallacy)
+                diff = top_row[metric] - bottom_row[metric]
+                ratio = (top_row[metric] / bottom_row[metric]) if bottom_row[metric] > 0 else 1.0
                 insights.append({
-                    "type": "trend",
-                    "icon": "fa-layer-group",
-                    "title": "Top-3 Concentration",
-                    "text": f"The top 3 categories alone account for <strong>{top_3_share:.1f}%</strong> of the aggregate {metric.replace('_', ' ')}."
+                    "type": "highlight",
+                    "icon": "fa-chart-simple",
+                    "title": f"Average {metric.replace('_', ' ')} Comparison",
+                    "text": f"<strong>{top_row[cat]}</strong> averages <strong>{top_row[metric]:,.2f}</strong> vs <strong>{bottom_row[cat]}</strong> at <strong>{bottom_row[metric]:,.2f}</strong> (a difference of <strong>{diff:,.2f}</strong>, or <strong>{ratio:.1f}x</strong>)."
                 })
+            else:
+                top_share = (top_row[metric] / total_sum * 100) if total_sum > 0 else 0
+                insights.append({
+                    "type": "highlight",
+                    "icon": "fa-crown",
+                    "title": f"Top Performer by {metric.replace('_', ' ')}",
+                    "text": f"<strong>{top_row[cat]}</strong> leads with <strong>{top_row[metric]:,.2f}</strong>, contributing <strong>{top_share:.1f}%</strong> of the total volume observed."
+                })
+
+                if len(sorted_df) >= 3:
+                    top_3_sum = sorted_df.head(3)[metric].sum()
+                    top_3_share = (top_3_sum / total_sum * 100) if total_sum > 0 else 0
+                    insights.append({
+                        "type": "trend",
+                        "icon": "fa-layer-group",
+                        "title": "Top-3 Concentration",
+                        "text": f"The top 3 categories alone account for <strong>{top_3_share:.1f}%</strong> of the aggregate {metric.replace('_', ' ')}."
+                    })
 
         # 4. Chart-Specific Interpretation
         if chart_config:

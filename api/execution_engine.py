@@ -40,14 +40,32 @@ def detect_chart_type(df: pd.DataFrame) -> Dict[str, Any] | None:
             "y_label": y_col
         }
 
-    # Rule 2: Low-cardinality category (<= 7) + 1 numeric -> Donut / Pie Chart
+    # Rule 2: Donut / Pie Chart - STRICT PART-TO-WHOLE INTEGRITY
+    # Strictly PROHIBIT Pie/Donut charts on averages, means, ratings, or continuous measures (e.g. YearsAtCompany, Age, Income)
+    # Pie charts are ONLY permitted on additive part-to-whole quantities (counts, frequencies, or non-mean percentage shares)
     if len(cat_cols) == 1 and len(num_cols) == 1 and len(df) <= 7:
-        return {
-            "type": "pie",
-            "title": f"Distribution of {num_cols[0].replace('_', ' ')} by {cat_cols[0].replace('_', ' ')}",
-            "labels": df[cat_cols[0]].astype(str).tolist(),
-            "values": df[num_cols[0]].fillna(0).tolist()
-        }
+        metric = num_cols[0]
+        m_lower = metric.lower()
+
+        is_average_or_rate = any(w in m_lower for w in [
+            'mean', 'avg', 'average', 'median', 'year', 'age', 'income',
+            'salary', 'rate', 'price', 'cost', 'score', 'rating', 'distance',
+            'tenure', 'hour', 'level', 'experience', 'hike'
+        ])
+
+        is_count_or_sum = any(w in m_lower for w in [
+            'count', 'headcount', 'total', 'sum', 'volume', 'frequency',
+            'num_', 'share', 'percent', 'pct'
+        ])
+
+        # Only allow pie chart if explicitly an additive count/sum and NOT an average
+        if is_count_or_sum and not is_average_or_rate:
+            return {
+                "type": "pie",
+                "title": f"Distribution of {metric.replace('_', ' ')} by {cat_cols[0].replace('_', ' ')}",
+                "labels": df[cat_cols[0]].astype(str).tolist(),
+                "values": df[metric].fillna(0).tolist()
+            }
 
     # Rule 3: 1 Category + 1 or more Numeric -> Bar Chart
     if (cat_cols or len(cols) == 2) and num_cols:
