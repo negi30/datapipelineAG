@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (userApiKey) {
     document.getElementById("gemini-key-input").value = userApiKey;
   }
+  updateLlmButtonState();
 });
 
 // Fetch Dataset Overview & Populate Tabs
@@ -143,7 +144,13 @@ function initChat() {
 
       if (!res.ok) {
         const errData = await res.json();
-        appendErrorMessage(errData.detail || "Error querying data agent.");
+        const detail = errData.detail || "Error querying data agent.";
+        if (detail.includes("NO_LLM_KEY")) {
+          appendApiKeyPrompt();
+          document.getElementById("settings-modal").classList.remove("hidden");
+        } else {
+          appendErrorMessage(detail);
+        }
         return;
       }
 
@@ -202,7 +209,7 @@ function appendAgentResponse(data) {
   // Provider label
   let providerBadge = "";
   if (data.provider === "gemini") {
-    providerBadge = `<span class="badge-info text-[10px] font-mono px-2 py-0.5 rounded-full"><i class="fa-solid fa-bolt mr-1"></i>Gemini 2.0 Flash</span>`;
+    providerBadge = `<span class="badge-info text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40"><i class="fa-solid fa-brain mr-1"></i>Gemini 2.0 Flash LLM</span>`;
   } else if (data.provider === "openai") {
     providerBadge = `<span class="badge-info text-[10px] font-mono px-2 py-0.5 rounded-full"><i class="fa-solid fa-microchip mr-1"></i>OpenAI</span>`;
   } else {
@@ -548,7 +555,8 @@ function initModals() {
       localStorage.removeItem("gemini_api_key");
     }
     closeModals();
-    alert("AI Model configuration updated!");
+    updateLlmButtonState();
+alert("LLM configuration saved! All queries will now route through this LLM.");
   });
 }
 
@@ -592,4 +600,52 @@ function downloadCSV(columns, data) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function appendApiKeyPrompt() {
+  const stream = document.getElementById("chat-stream");
+  const el = document.createElement("div");
+  el.className = "flex items-start gap-3";
+  el.innerHTML = `
+    <div class="h-8 w-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+      <i class="fa-solid fa-key text-sm"></i>
+    </div>
+    <div class="bg-slate-900 border border-amber-500/40 text-slate-200 rounded-2xl rounded-tl-sm p-4 text-xs space-y-2 max-w-xl shadow-lg">
+      <p class="font-semibold text-amber-300 flex items-center gap-1.5">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>LLM API Key Required</span>
+      </p>
+      <p class="text-slate-300 leading-relaxed">
+        All queries must route through an LLM. Please connect your <strong>Google Gemini API Key</strong> (or OpenAI / Groq key) to generate live Python Pandas code.
+      </p>
+      <div class="flex items-center gap-2 pt-1">
+        <button onclick="document.getElementById('settings-modal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm">
+          <i class="fa-solid fa-key mr-1"></i> Enter API Key
+        </button>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-indigo-400 hover:text-indigo-300 underline">
+          Get free Gemini Key (Google AI Studio) &rarr;
+        </a>
+      </div>
+    </div>
+  `;
+  stream.appendChild(el);
+}
+
+function updateLlmButtonState() {
+  const btn = document.getElementById("btn-settings-modal");
+  const label = document.getElementById("btn-llm-label");
+  if (!btn || !label) return;
+
+  if (userApiKey) {
+    let name = "Gemini 2.0";
+    if (userApiKey.startsWith("gsk_")) name = "Groq Llama 3.3";
+    else if (userApiKey.startsWith("sk-")) name = "OpenAI GPT-4o";
+    label.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 inline-block mr-1"></span>${name}`;
+    btn.classList.remove("bg-indigo-600", "hover:bg-indigo-500");
+    btn.classList.add("bg-emerald-700", "hover:bg-emerald-600");
+  } else {
+    label.textContent = "Connect LLM";
+    btn.classList.remove("bg-emerald-700", "hover:bg-emerald-600");
+    btn.classList.add("bg-indigo-600", "hover:bg-indigo-500");
+  }
 }

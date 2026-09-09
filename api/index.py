@@ -93,6 +93,9 @@ def run_query(payload: QueryRequest):
             "note": note,
             "execution": exec_res
         }
+    except ValueError as ve:
+        logger.warning(f"Query validation: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         logger.error(f"Error processing query: {e}")
         raise HTTPException(status_code=500, detail=str(e))

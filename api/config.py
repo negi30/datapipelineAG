@@ -24,6 +24,7 @@ DEFAULT_DATASET_PATH = DATA_DIR / "sample_retail_data.csv"
 # LLM Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 # Execution Limits
 EXECUTION_TIMEOUT_SECONDS = int(os.environ.get("EXECUTION_TIMEOUT_SECONDS", 10))

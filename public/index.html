@@ -50,8 +50,8 @@
       </button>
 
       <button id="btn-settings-modal" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm">
-        <i class="fa-solid fa-key"></i>
-        <span>API Key</span>
+        <i class="fa-solid fa-robot"></i>
+        <span id="btn-llm-label">Connect LLM</span>
       </button>
     </div>
   </header>
@@ -327,21 +327,30 @@
 
       <div class="p-6 space-y-4">
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Google Gemini API Key</label>
+          <label class="block text-xs font-medium text-slate-300 mb-1">LLM API Key (Google Gemini / OpenAI / Groq)</label>
           <input 
             type="password" 
             id="gemini-key-input" 
-            placeholder="AIzaSy..." 
-            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            placeholder="AIzaSy... or sk-... or gsk-..." 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
           />
-          <p class="text-[11px] text-slate-400 mt-1">
-            Uses Gemini 2.0 Flash for instant code synthesis. Stored locally in your browser session.
-          </p>
+          <div class="flex items-center justify-between text-[11px] mt-1.5">
+            <span class="text-slate-400">Recommended: Google Gemini 2.0 Flash</span>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline font-medium">Get Free Key &rarr;</a>
+          </div>
         </div>
 
-        <div class="bg-indigo-950/30 p-3 rounded-lg border border-indigo-500/20 text-[11px] text-indigo-300 space-y-1">
-          <p class="font-semibold text-indigo-200">✨ Offline Heuristic Engine Built-in</p>
-          <p>Even without an API key, standard queries (rankings, group-bys, totals, trends, filters) work seamlessly using the built-in analyzer.</p>
+        <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-2">
+          <p class="font-semibold text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-microchip text-indigo-400"></i>
+            <span>Supported LLM Providers</span>
+          </p>
+          <ul class="space-y-1 text-slate-400 list-disc list-inside">
+            <li><strong class="text-slate-200">Google Gemini</strong> (free at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 underline">AI Studio</a>)</li>
+            <li><strong class="text-slate-200">Groq</strong> (free fast Llama 3.3 at <a href="https://console.groq.com" target="_blank" class="text-indigo-400 underline">groq.com</a>)</li>
+            <li><strong class="text-slate-200">OpenAI</strong> (GPT-4o-mini via sk-...)</li>
+            <li><strong class="text-slate-200">Local Ollama</strong> (auto-routed if running on localhost:11434)</li>
+          </ul>
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
